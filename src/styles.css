@@ -409,19 +409,20 @@ input, select { font-family: inherit; }
   --team: var(--volt);
   width: 46px;
   height: 50px;
-  display: grid;
-  place-items: center;
-  font-size: 22px;
-  background: linear-gradient(170deg, color-mix(in srgb, var(--team) 38%, #101b13), #0c1610);
-  border: 1.5px solid color-mix(in srgb, var(--team) 65%, transparent);
+  overflow: hidden;
+  background: #0c1610;
+  border: 1.5px solid color-mix(in srgb, var(--team) 70%, transparent);
+  /* clip-path (the shape) is set inline per team via shapeClipCss() */
   clip-path: polygon(50% 0, 100% 12%, 100% 62%, 50% 100%, 0 62%, 0 12%);
   flex-shrink: 0;
 }
 
-.badge-shield.lg { width: 66px; height: 72px; font-size: 32px; }
-.badge-shield.sm { width: 30px; height: 33px; font-size: 14px; }
+.badge-shield svg { display: block; width: 100%; height: 100%; }
 
-/* ── avatar chip ── */
+.badge-shield.lg { width: 66px; height: 72px; }
+.badge-shield.sm { width: 30px; height: 33px; }
+
+/* ── avatar chip (initials monogram) ── */
 .avatar {
   width: 38px;
   height: 38px;
@@ -434,7 +435,90 @@ input, select { font-family: inherit; }
   flex-shrink: 0;
 }
 
+.avatar.mono {
+  --ava: var(--volt);
+  color: var(--ava);
+  font-family: var(--font-body);
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+  background: color-mix(in srgb, var(--ava) 20%, var(--surface-3));
+  border: 1px solid color-mix(in srgb, var(--ava) 45%, transparent);
+}
+
 .avatar.lg { width: 56px; height: 56px; font-size: 28px; border-radius: 16px; }
+.avatar.mono.lg { font-size: 21px; }
+.avatar.sm { width: 30px; height: 30px; border-radius: 9px; }
+.avatar.mono.sm { font-size: 12px; }
+
+/* ── colour swatch picker ── */
+.swatch {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: none;
+  outline-offset: 2px;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.1s;
+}
+.swatch:active { transform: scale(0.92); }
+.swatch.auto {
+  background: linear-gradient(135deg, #0c1610 0 50%, #f4fbef 50% 100%);
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--volt);
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.55);
+}
+
+/* ── crest builder: symbol picker ── */
+.crest-symbol-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 8px;
+}
+@media (max-width: 460px) { .crest-symbol-grid { grid-template-columns: repeat(6, 1fr); } }
+.crest-symbol {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s, transform 0.1s;
+}
+.crest-symbol svg { width: 60%; height: 60%; }
+.crest-symbol:active { transform: scale(0.92); }
+.crest-symbol.on {
+  border-color: var(--volt);
+  color: var(--volt);
+  background: rgba(200, 246, 60, 0.1);
+}
+
+/* ── crest builder: pattern picker ── */
+.crest-pattern {
+  width: 44px;
+  height: 48px;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  overflow: hidden;
+  background: #0c1610;
+  opacity: 0.45;
+  filter: grayscale(0.35);
+  /* clip-path (the shape) is set inline so previews follow the chosen shape */
+  transition: opacity 0.15s, transform 0.12s, filter 0.15s;
+}
+.crest-pattern svg { display: block; width: 100%; height: 100%; }
+.crest-pattern.on {
+  opacity: 1;
+  filter: none;
+  transform: scale(1.12);
+}
 
 /* ── pills, stats, dots ── */
 .pill {

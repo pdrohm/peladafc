@@ -1,7 +1,20 @@
 import type { Match, Player, Team } from '../types'
 import { scoreOf } from './stats'
 import { formatDate } from './util'
+import { buildCrestSvg, teamCrest } from './crest'
 import { t } from '../i18n'
+
+/** Rasterise a team crest SVG into an <img> we can drawImage onto the canvas. */
+function loadCrest(team: Team, px: number): Promise<HTMLImageElement> {
+  const svg = buildCrestSvg(teamCrest(team), team.color, { shield: true, px })
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = reject
+    img.src = url
+  })
+}
 
 /** Render a 1080×1080 result card and open the native share sheet (or download). */
 export async function shareMatchImage(match: Match, teams: Team[], players: Player[]): Promise<void> {
@@ -53,9 +66,11 @@ export async function shareMatchImage(match: Match, teams: Team[], players: Play
   ctx.fillText(`${formatDate(match.date)}  ·  ${match.location}`, W / 2, 162)
 
   // team crests + names
-  const drawTeam = (team: Team, x: number) => {
-    ctx.font = '150px sans-serif'
-    ctx.fillText(team.emoji, x, 420)
+  const [crestA, crestB] = await Promise.all([loadCrest(teamA, 150), loadCrest(teamB, 150)])
+  const drawTeam = (team: Team, img: HTMLImageElement, x: number) => {
+    const cw = 150
+    const ch = Math.round((cw * 53) / 48)
+    ctx.drawImage(img, x - cw / 2, 296, cw, ch)
     ctx.fillStyle = '#eef7ec'
     let size = 34
     ctx.font = `800 ${size}px Sora, sans-serif`
@@ -64,12 +79,12 @@ export async function shareMatchImage(match: Match, teams: Team[], players: Play
       size -= 2
       ctx.font = `800 ${size}px Sora, sans-serif`
     }
-    ctx.fillText(name, x, 490)
+    ctx.fillText(name, x, 505)
     ctx.fillStyle = team.color
-    ctx.fillRect(x - 60, 512, 120, 8)
+    ctx.fillRect(x - 60, 524, 120, 8)
   }
-  drawTeam(teamA, W * 0.21)
-  drawTeam(teamB, W * 0.79)
+  drawTeam(teamA, crestA, W * 0.21)
+  drawTeam(teamB, crestB, W * 0.79)
 
   // score
   ctx.fillStyle = '#eef7ec'
@@ -85,24 +100,24 @@ export async function shareMatchImage(match: Match, teams: Team[], players: Play
   if (mvp) {
     ctx.fillStyle = '#ffc94b'
     ctx.font = '700 36px Sora, sans-serif'
-    ctx.fillText(`👑  MVP · ${mvp.emoji} ${mvp.nickname}`, W / 2, y)
+    ctx.fillText(`👑  MVP · ${mvp.nickname}`, W / 2, y)
     y += 80
   }
 
-  // scorers (aggregated)
-  const counts = new Map<string, { label: string; n: number }>()
+  // scorers (aggregated) — coloured by their team
+  const counts = new Map<string, { label: string; n: number; color: string }>()
   for (const g of match.goals) {
     const team = g.teamId === teamA.id ? teamA : teamB
     const nick = g.scorerId ? (players.find((p) => p.id === g.scorerId)?.nickname ?? '???') : t('live.mysteryGoal')
     const key = `${team.id}:${nick}`
     const cur = counts.get(key)
     if (cur) cur.n++
-    else counts.set(key, { label: `${team.emoji} ⚽ ${nick}`, n: 1 })
+    else counts.set(key, { label: `⚽ ${nick}`, n: 1, color: team.color })
   }
-  ctx.fillStyle = '#8da695'
   ctx.font = '600 30px Sora, sans-serif'
   const lines = [...counts.values()].slice(0, 7)
   for (const line of lines) {
+    ctx.fillStyle = line.color
     ctx.fillText(line.n > 1 ? `${line.label} ×${line.n}` : line.label, W / 2, y)
     y += 50
   }

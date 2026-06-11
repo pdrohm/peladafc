@@ -1,5 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react'
-import type { Team } from '../types'
+import type { Player, Team } from '../types'
+import { buildCrestSvg, shapeClipCss, teamCrest } from '../lib/crest'
+import { avatarColorFor, playerInitials } from '../lib/util'
 
 export function Sheet({ open, onClose, title, children }: {
   open: boolean
@@ -35,13 +37,24 @@ export function Sheet({ open, onClose, title, children }: {
 }
 
 export function TeamShield({ team, size }: { team: Team; size?: 'sm' | 'lg' }) {
+  const crest = teamCrest(team)
+  const svg = buildCrestSvg(crest, team.color)
   return (
     <span
       className={`badge-shield ${size ?? ''}`}
-      style={{ ['--team' as string]: team.color }}
+      style={{ ['--team' as string]: team.color, clipPath: shapeClipCss(crest.shape) }}
       title={team.name}
-    >
-      {team.emoji}
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+  )
+}
+
+/** Initials monogram avatar for a player, coloured from their avatarColor. */
+export function PlayerAvatar({ player, size }: { player: Player; size?: 'sm' | 'lg' }) {
+  const color = player.avatarColor || avatarColorFor(player.id)
+  return (
+    <span className={`avatar mono ${size ?? ''}`} style={{ ['--ava' as string]: color }} title={player.nickname}>
+      {playerInitials(player)}
     </span>
   )
 }

@@ -2,16 +2,28 @@ export type Player = {
   id: string
   name: string
   nickname: string
-  emoji: string
+  avatarColor: string // hex — drives the initials monogram
   skill: number // 1..5
   createdAt: string
+}
+
+export type CrestPattern = 'solid' | 'halves' | 'stripes' | 'sash' | 'chevron' | 'hoops'
+
+export type CrestShape = 'shield' | 'circle' | 'hexagon' | 'diamond' | 'pentagon' | 'banner'
+
+export type TeamCrest = {
+  shape: CrestShape
+  pattern: CrestPattern
+  symbol: string // key into CREST_SYMBOLS
+  symbolColor: string // hex, or 'auto' to contrast the field automatically
+  secondary: string // hex — pattern / accent colour
 }
 
 export type Team = {
   id: string
   name: string
-  color: string
-  emoji: string
+  color: string // primary colour (the field)
+  crest: TeamCrest
   motto: string
 }
 

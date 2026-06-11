@@ -4,7 +4,7 @@ import { useT } from '../i18n'
 import { scoreOf } from '../lib/stats'
 import { shareMatchImage } from '../lib/share'
 import { todayISO, uid } from '../lib/util'
-import { Confetti, EmptyState, Sheet, TeamShield } from '../components/ui'
+import { Confetti, EmptyState, PlayerAvatar, Sheet, TeamShield } from '../components/ui'
 import type { GoalEvent, Match, Screen, Team } from '../types'
 
 export function Matchday({ go }: { go: (s: Screen) => void }) {
@@ -145,13 +145,13 @@ function RecordForm({ onSaved }: { onSaved: (id: string) => void }) {
           <div className="field">
             <label>{t('field.homeSide')}</label>
             <select className="input" value={teamAId} onChange={(e) => setTeamAId(e.target.value)}>
-              {teams.map((tm) => <option key={tm.id} value={tm.id}>{tm.emoji} {tm.name}</option>)}
+              {teams.map((tm) => <option key={tm.id} value={tm.id}>{tm.name}</option>)}
             </select>
           </div>
           <div className="field">
             <label>{t('field.awaySide')}</label>
             <select className="input" value={teamBId} onChange={(e) => setTeamBId(e.target.value)}>
-              {teams.map((tm) => <option key={tm.id} value={tm.id}>{tm.emoji} {tm.name}</option>)}
+              {teams.map((tm) => <option key={tm.id} value={tm.id}>{tm.name}</option>)}
             </select>
           </div>
         </div>
@@ -180,8 +180,8 @@ function RecordForm({ onSaved }: { onSaved: (id: string) => void }) {
             </div>
             <div className="spacer" />
             <div className="grid-2">
-              <button className="btn btn-volt" onClick={() => setGoalFor(teamA)}>{t('live.goal')} {teamA.emoji}</button>
-              <button className="btn btn-volt" onClick={() => setGoalFor(teamB)}>{t('live.goal')} {teamB.emoji}</button>
+              <button className="btn btn-volt" onClick={() => setGoalFor(teamA)}>{t('live.goal')} · {teamA.name}</button>
+              <button className="btn btn-volt" onClick={() => setGoalFor(teamB)}>{t('live.goal')} · {teamB.name}</button>
             </div>
             {liveGoals.length === 0 && <p className="tiny muted" style={{ marginBottom: 0, textAlign: 'center' }}>{t('rec.scoreHint')}</p>}
           </div>
@@ -197,8 +197,8 @@ function RecordForm({ onSaved }: { onSaved: (id: string) => void }) {
                   const team = g.teamId === teamA.id ? teamA : teamB
                   return (
                     <div className="goal-row" key={g.id}>
-                      <span>{team.emoji}</span>
-                      <span className="who">⚽ {scorer ? `${scorer.emoji} ${scorer.nickname}` : t('live.mysteryGoal')}</span>
+                      <TeamShield team={team} size="sm" />
+                      <span className="who">⚽ {scorer ? scorer.nickname : t('live.mysteryGoal')}</span>
                       {assist && <span className="assist">🤝 {assist.nickname}</span>}
                       <button className="icon-btn" style={{ marginLeft: 'auto' }} onClick={() => setGoals((gs) => gs.filter((x) => x.id !== g.id))} title={t('live.removeGoal')}>✕</button>
                     </div>
@@ -211,7 +211,7 @@ function RecordForm({ onSaved }: { onSaved: (id: string) => void }) {
           {/* mvp */}
           <div className="section-title">{t('live.matchAwards')}</div>
           <div className={`card flat row ${mvp ? 'mvp-card' : ''}`}>
-            <span className="avatar lg">{mvp ? mvp.emoji : '👑'}</span>
+            {mvp ? <PlayerAvatar player={mvp} size="lg" /> : <span className="avatar lg">👑</span>}
             <div className="grow">
               <div className="tiny muted" style={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.14em' }}>
                 <span className="crown">👑</span> {t('live.matchMvp')}
@@ -253,7 +253,7 @@ function RecordForm({ onSaved }: { onSaved: (id: string) => void }) {
                       setMvpOpen(false)
                     }}
                   >
-                    <span className="pemoji">{p.emoji}</span>
+                    <PlayerAvatar player={p} size="sm" />
                     <span><span className="pname">{p.nickname}</span></span>
                   </button>
                 )
@@ -265,7 +265,9 @@ function RecordForm({ onSaved }: { onSaved: (id: string) => void }) {
           <Sheet open={lineupOpen} onClose={() => setLineupOpen(false)} title={t('lineup.whoPlayedToday')}>
             {[teamA, teamB].map((team) => (
               <div key={team.id}>
-                <div className="section-title">{team.emoji} {team.name}</div>
+                <div className="section-title row" style={{ gap: 8, alignItems: 'center' }}>
+                  <TeamShield team={team} size="sm" /> {team.name}
+                </div>
                 <div className="chip-grid">
                   {players.map((p) => {
                     const inTeam = lineupOf(team.id).includes(p.id)
@@ -277,7 +279,7 @@ function RecordForm({ onSaved }: { onSaved: (id: string) => void }) {
                         className={`pchip ${inTeam ? 'on' : ''}`}
                         onClick={() => toggleLineup(team.id, p.id)}
                       >
-                        <span className="pemoji">{p.emoji}</span>
+                        <PlayerAvatar player={p} size="sm" />
                         <span><span className="pname">{p.nickname}</span></span>
                       </button>
                     )
@@ -310,7 +312,7 @@ function GoalForm({ playerIds, onSave }: {
       <div className="chip-grid">
         {squad.map((p) => (
           <button key={p.id} className={`pchip ${scorerId === p.id ? 'on' : ''}`} onClick={() => setScorerId(scorerId === p.id ? null : p.id)}>
-            <span className="pemoji">{p.emoji}</span>
+            <PlayerAvatar player={p} size="sm" />
             <span><span className="pname">{p.nickname}</span></span>
           </button>
         ))}
@@ -319,7 +321,7 @@ function GoalForm({ playerIds, onSave }: {
       <div className="chip-grid">
         {squad.filter((p) => p.id !== scorerId).map((p) => (
           <button key={p.id} className={`pchip ${assistId === p.id ? 'on' : ''}`} onClick={() => setAssistId(assistId === p.id ? null : p.id)}>
-            <span className="pemoji">{p.emoji}</span>
+            <PlayerAvatar player={p} size="sm" />
             <span><span className="pname">{p.nickname}</span></span>
           </button>
         ))}
@@ -369,7 +371,7 @@ function FullTime({ match, go, onDone }: { match: Match; go: (s: Screen) => void
         </div>
         {mvp && (
           <p style={{ marginBottom: 0 }}>
-            <span className="pill gold"><span className="crown">👑</span> {t('ft.mvp')} · {mvp.emoji} {mvp.nickname}</span>
+            <span className="pill gold"><span className="crown">👑</span> {t('ft.mvp')} · {mvp.nickname}</span>
           </p>
         )}
       </div>

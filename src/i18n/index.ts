@@ -4,10 +4,10 @@ import { persist } from 'zustand/middleware'
 
 export type Lang = 'en' | 'pt'
 
-/** Browser-based first guess — Brazilian phones land on pt, everyone else on en. */
+/** Portuguese (Brazil) is the default; only an explicitly English browser flips to en. */
 function detectLang(): Lang {
-  if (typeof navigator !== 'undefined' && navigator.language?.toLowerCase().startsWith('pt')) return 'pt'
-  return 'en'
+  if (typeof navigator !== 'undefined' && navigator.language?.toLowerCase().startsWith('en')) return 'en'
+  return 'pt'
 }
 
 type LangState = { lang: Lang; setLang: (l: Lang) => void; toggle: () => void }
@@ -268,7 +268,13 @@ const en: Dict = {
   'form.battleCry': 'Battle cry',
   'form.battleCryHint': 'We never run dry',
   'form.crest': 'Crest',
-  'form.colours': 'Colours',
+  'form.shape': 'Shape',
+  'form.pattern': 'Pattern',
+  'form.symbol': 'Symbol',
+  'form.symbolColour': 'Symbol colour',
+  'form.colours': 'Main colour',
+  'form.secondaryColour': 'Accent colour',
+  'form.avatarColour': 'Avatar colour',
   'form.saveIdentity': 'Save identity',
   'season.active': 'ACTIVE SEASON',
   'season.kickedOff': 'Kicked off {date} · {n} matches played',
@@ -525,7 +531,13 @@ const pt: Dict = {
   'form.battleCry': 'Grito de guerra',
   'form.battleCryHint': 'Nunca deixamos a peteca cair',
   'form.crest': 'Escudo',
-  'form.colours': 'Cores',
+  'form.shape': 'Formato',
+  'form.pattern': 'Estampa',
+  'form.symbol': 'Símbolo',
+  'form.symbolColour': 'Cor do símbolo',
+  'form.colours': 'Cor principal',
+  'form.secondaryColour': 'Cor de destaque',
+  'form.avatarColour': 'Cor do avatar',
   'form.saveIdentity': 'Salvar identidade',
   'season.active': 'TEMPORADA ATIVA',
   'season.kickedOff': 'Iniciada em {date} · {n} jogos disputados',

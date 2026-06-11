@@ -4,7 +4,7 @@ import { useT } from '../i18n'
 import { computePlayerStats, computeStandings, leaders, scoreOf, seasonMatches } from '../lib/stats'
 import { shareMatchImage } from '../lib/share'
 import { formatDate } from '../lib/util'
-import { EmptyState, FormDots, TeamShield } from '../components/ui'
+import { EmptyState, FormDots, PlayerAvatar, TeamShield } from '../components/ui'
 import type { Screen } from '../types'
 
 type Tab = 'table' | 'goals' | 'assists' | 'mvps' | 'matches'
@@ -46,7 +46,7 @@ export function Standings({ go }: { go: (s: Screen) => void }) {
           return (
             <div className={`rank-row ${i === 0 ? 'first' : ''}`} key={s.playerId}>
               <span className="rank-pos">{i === 0 ? '👑' : i + 1}</span>
-              <span className="avatar">{p.emoji}</span>
+              <PlayerAvatar player={p} />
               <div className="rank-main">
                 <div className="rank-name">{p.nickname}</div>
                 <div className="rank-sub">{t('rank.appsWin', { apps: s.apps, pct: Math.round(s.winRate * 100) })}</div>
@@ -158,14 +158,16 @@ export function Standings({ go }: { go: (s: Screen) => void }) {
                   </button>
                 </div>
                 {m.goals.length > 0 && (
-                  <div className="tiny muted" style={{ marginTop: 8 }}>
-                    {m.goals
-                      .map((g) => {
-                        const s = g.scorerId ? playerOf(g.scorerId)?.nickname : '???'
-                        const team = g.teamId === ta.id ? ta.emoji : tb.emoji
-                        return `${team} ${s}`
-                      })
-                      .join(' · ')}
+                  <div className="tiny muted goal-list" style={{ marginTop: 8 }}>
+                    {m.goals.map((g, gi) => {
+                      const s = g.scorerId ? playerOf(g.scorerId)?.nickname ?? '???' : '???'
+                      const team = g.teamId === ta.id ? ta : tb
+                      return (
+                        <span key={g.id} style={{ color: team.color }}>
+                          ⚽ {s}{gi < m.goals.length - 1 ? <span className="muted"> · </span> : null}
+                        </span>
+                      )
+                    })}
                   </div>
                 )}
               </div>

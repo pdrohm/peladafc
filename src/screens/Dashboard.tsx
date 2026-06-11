@@ -3,7 +3,7 @@ import { useT, plural } from '../i18n'
 import { computePlayerStats, computeStandings, leaders, scoreOf, seasonMatches } from '../lib/stats'
 import { formatDate } from '../lib/util'
 import { teamSkill } from '../lib/draw'
-import { EmptyState, FormDots, TeamShield } from '../components/ui'
+import { EmptyState, FormDots, PlayerAvatar, TeamShield } from '../components/ui'
 import type { Screen } from '../types'
 
 export function Dashboard({ go }: { go: (s: Screen) => void }) {
@@ -152,21 +152,22 @@ export function Dashboard({ go }: { go: (s: Screen) => void }) {
               { id: 'goldenBoot', label: t('dash.goldenBoot'), emoji: '👟', s: topScorers[0], val: topScorers[0]?.goals, unit: t('units.goals') },
               { id: 'waiter', label: t('dash.theWaiter'), emoji: '🍽️', s: topAssists[0], val: topAssists[0]?.assists, unit: t('units.assists') },
               { id: 'mvpKing', label: t('dash.mvpKing'), emoji: '👑', s: topMvps[0], val: topMvps[0]?.mvps, unit: t('units.mvps') },
-            ].map(({ id, label, emoji, s, val, unit }) =>
-              s ? (
+            ].map(({ id, label, emoji, s, val, unit }) => {
+              const ply = s ? playerOf(s.playerId) : null
+              return s && ply ? (
                 <div className={`card flat row ${id === 'mvpKing' ? 'mvp-card' : ''}`} key={id}>
-                  <span className="avatar lg">{playerOf(s.playerId)?.emoji}</span>
+                  <PlayerAvatar player={ply} size="lg" />
                   <div className="grow">
                     <div className="tiny muted" style={{ letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 800 }}>
                       {id === 'mvpKing' ? <span className="crown">{emoji}</span> : emoji} {label}
                     </div>
-                    <div className="rank-name" style={{ fontSize: 16 }}>{playerOf(s.playerId)?.nickname}</div>
+                    <div className="rank-name" style={{ fontSize: 16 }}>{ply.nickname}</div>
                   </div>
                   <div className="rank-val" style={{ fontSize: 34 }}>{val}</div>
                   <span className="tiny muted">{unit}</span>
                 </div>
-              ) : null,
-            )}
+              ) : null
+            })}
             {topScorers.length === 0 && (
               <p className="muted tiny">{t('dash.crownFirst')}</p>
             )}

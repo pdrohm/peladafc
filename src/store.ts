@@ -1,7 +1,33 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Draw, GoalEvent, Match, Player, Season, Team } from './types'
-import { todayISO, uid } from './lib/util'
+import { AVATAR_COLORS, avatarColorFor, todayISO, uid } from './lib/util'
+import { teamCrest } from './lib/crest'
+
+/* Coerce possibly-legacy persisted/imported records into the current shape.
+   Old data used player.emoji / team.emoji; we derive a monogram colour and a
+   crest so leagues saved before this version keep working. */
+function normalizePlayer(p: Partial<Player> & { id?: string; nickname?: string; name?: string }): Player {
+  const id = p.id ?? uid()
+  return {
+    id,
+    name: p.name ?? p.nickname ?? '',
+    nickname: p.nickname ?? p.name ?? '',
+    avatarColor: p.avatarColor ?? avatarColorFor(id),
+    skill: p.skill ?? 3,
+    createdAt: p.createdAt ?? new Date().toISOString(),
+  }
+}
+
+function normalizeTeam(t: Partial<Team> & { id?: string; emoji?: string }): Team {
+  return {
+    id: t.id ?? uid(),
+    name: t.name ?? '',
+    color: t.color ?? '#c8f63c',
+    crest: teamCrest(t),
+    motto: t.motto ?? '',
+  }
+}
 
 export type LeagueData = {
   players: Player[]
@@ -155,15 +181,28 @@ export const useStore = create<State>()(
         set({ players: [], teams: [], seasons: [], matches: [], draw: null, activeSeasonId: null }),
       importData: (data) =>
         set({
-          players: data.players ?? [],
-          teams: data.teams ?? [],
+          players: (data.players ?? []).map(normalizePlayer),
+          teams: (data.teams ?? []).map(normalizeTeam),
           seasons: data.seasons ?? [],
           matches: data.matches ?? [],
           draw: data.draw ?? null,
           activeSeasonId: data.activeSeasonId ?? null,
         }),
     }),
-    { name: 'pelada-fc', version: 1 },
+    {
+      name: 'pelada-fc',
+      version: 2,
+      // v1 → v2: players carried an emoji, teams carried an emoji. Migrate to
+      // monogram colours + structured crests.
+      migrate: (persisted) => {
+        const s = persisted as Partial<LeagueData>
+        return {
+          ...s,
+          players: (s.players ?? []).map(normalizePlayer),
+          teams: (s.teams ?? []).map(normalizeTeam),
+        }
+      },
+    },
   ),
 )
 
@@ -175,31 +214,32 @@ function clampLock(n: number): number {
 // ---------- demo league ----------
 
 function buildDemo() {
-  const mk = (name: string, nickname: string, emoji: string, skill: number): Player => ({
+  let n = 0
+  const mk = (name: string, nickname: string, skill: number): Player => ({
     id: uid(),
     name,
     nickname,
-    emoji,
+    avatarColor: AVATAR_COLORS[n++ % AVATAR_COLORS.length],
     skill,
     createdAt: new Date().toISOString(),
   })
   const players = [
-    mk('Pedro Marques', 'Pedrão', '🦊', 4),
-    mk('Rafael Souza', 'Rafa', '🐆', 5),
-    mk('Leonardo Lima', 'Léo', '🦅', 3),
-    mk('Eduardo Alves', 'Dudu', '🐙', 4),
-    mk('Guilherme Costa', 'Gui', '🐺', 2),
-    mk('Matheus Rocha', 'Teteus', '🦁', 3),
-    mk('Vinícius Prado', 'Vini', '⚡', 4),
-    mk('Caio Mendes', 'Caioba', '🐢', 2),
-    mk('Tiago Nunes', 'Tigrão', '🐯', 3),
-    mk('Bruno Dias', 'Bruninho', '🦈', 5),
-    mk('Felipe Ramos', 'Pipo', '🦉', 3),
-    mk('Marcos Vieira', 'Marcão', '🐻', 2),
+    mk('Pedro Marques', 'Pedrão', 4),
+    mk('Rafael Souza', 'Rafa', 5),
+    mk('Leonardo Lima', 'Léo', 3),
+    mk('Eduardo Alves', 'Dudu', 4),
+    mk('Guilherme Costa', 'Gui', 2),
+    mk('Matheus Rocha', 'Teteus', 3),
+    mk('Vinícius Prado', 'Vini', 4),
+    mk('Caio Mendes', 'Caioba', 2),
+    mk('Tiago Nunes', 'Tigrão', 3),
+    mk('Bruno Dias', 'Bruninho', 5),
+    mk('Felipe Ramos', 'Pipo', 3),
+    mk('Marcos Vieira', 'Marcão', 2),
   ]
   const teams: Team[] = [
-    { id: uid(), name: 'Real Madruga', color: '#c8f63c', emoji: '🌙', motto: 'Late nights, early goals' },
-    { id: uid(), name: 'Borussia Brewery', color: '#ff8a3d', emoji: '🍺', motto: 'We never run dry' },
+    { id: uid(), name: 'Real Madruga', color: '#c8f63c', crest: { shape: 'shield', pattern: 'sash', symbol: 'moon', symbolColor: 'auto', secondary: '#0c1610' }, motto: 'Late nights, early goals' },
+    { id: uid(), name: 'Borussia Brewery', color: '#ff8a3d', crest: { shape: 'circle', pattern: 'stripes', symbol: 'trophy', symbolColor: 'auto', secondary: '#0c1610' }, motto: 'We never run dry' },
   ]
   const season: Season = { id: uid(), name: 'Season 1 · 2026', startedAt: '2026-05-07', endedAt: null }
 

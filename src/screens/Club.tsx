@@ -2,15 +2,12 @@ import { useRef, useState, type ChangeEvent } from 'react'
 import { useStore, type LeagueData } from '../store'
 import { useT } from '../i18n'
 import { computePlayerStats, computeStandings, leaders, playerBadges } from '../lib/stats'
-import { todayISO } from '../lib/util'
-import { Confetti, EmptyState, Sheet, Stars, TeamShield } from '../components/ui'
-import type { Player, Team } from '../types'
+import { AVATAR_COLORS, todayISO } from '../lib/util'
+import { buildCrestSvg, CREST_COLORS, CREST_INK, CREST_PATTERNS, CREST_SECONDARY, CREST_SHAPES, CREST_SYMBOLS, DEFAULT_CREST, shapeClipCss, teamCrest } from '../lib/crest'
+import { Confetti, EmptyState, PlayerAvatar, Sheet, Stars, TeamShield } from '../components/ui'
+import type { CrestPattern, CrestShape, Player, Team, TeamCrest } from '../types'
 
 type Tab = 'players' | 'teams' | 'season'
-
-const AVATARS = ['🦊', '🐺', '🦁', '🐯', '🦅', '🦈', '🐆', '🐙', '🦉', '🐻', '🐢', '⚡', '🔥', '🌪️', '🦂', '🐊']
-const TEAM_EMOJIS = ['🌙', '🍺', '⚡', '🔥', '🌊', '🦁', '👻', '🚀', '🌵', '🎩', '🐉', '🛡️']
-const TEAM_COLORS = ['#c8f63c', '#ff8a3d', '#4da3ff', '#ff5c8a', '#ffc94b', '#7c5cff', '#2dd4bf', '#ff6b57']
 
 export function Club() {
   const t = useT()
@@ -59,7 +56,7 @@ function PlayersTab() {
                   style={{ width: '100%', background: 'none', border: 'none', borderBottom: '1px solid var(--line)', color: 'inherit', textAlign: 'left' }}
                   onClick={() => setProfile(p)}
                 >
-                  <span className="avatar">{p.emoji}</span>
+                  <PlayerAvatar player={p} />
                   <div className="rank-main">
                     <div className="rank-name">{p.nickname} <span className="tiny muted">{p.name}</span></div>
                     <div className="rank-sub">⚽ {s?.goals ?? 0} · 🤝 {s?.assists ?? 0} · 👑 {s?.mvps ?? 0}</div>
@@ -96,11 +93,23 @@ function PlayerForm({ player, onDone }: { player: Player | null; onDone: () => v
   const { addPlayer, updatePlayer } = useStore()
   const [name, setName] = useState(player?.name ?? '')
   const [nickname, setNickname] = useState(player?.nickname ?? '')
-  const [emoji, setEmoji] = useState(player?.emoji ?? AVATARS[Math.floor(Math.random() * AVATARS.length)])
+  const [avatarColor, setAvatarColor] = useState(
+    player?.avatarColor ?? AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
+  )
   const [skill, setSkill] = useState(player?.skill ?? 3)
 
+  // Live monogram preview reflects whatever the form currently holds.
+  const previewPlayer: Player = {
+    id: player?.id ?? 'preview',
+    name,
+    nickname,
+    avatarColor,
+    skill,
+    createdAt: '',
+  }
+
   const save = () => {
-    const data = { name: name.trim() || nickname.trim(), nickname: nickname.trim() || name.trim(), emoji, skill }
+    const data = { name: name.trim() || nickname.trim(), nickname: nickname.trim() || name.trim(), avatarColor, skill }
     if (!data.name) return
     if (player) updatePlayer(player.id, data)
     else addPlayer(data)
@@ -109,6 +118,9 @@ function PlayerForm({ player, onDone }: { player: Player | null; onDone: () => v
 
   return (
     <div>
+      <div className="row" style={{ justifyContent: 'center', marginBottom: 14 }}>
+        <PlayerAvatar player={previewPlayer} size="lg" />
+      </div>
       <div className="grid-2">
         <div className="field">
           <label>{t('form.nickname')}</label>
@@ -120,17 +132,16 @@ function PlayerForm({ player, onDone }: { player: Player | null; onDone: () => v
         </div>
       </div>
       <div className="field">
-        <label>{t('form.spiritAnimal')}</label>
+        <label>{t('form.avatarColour')}</label>
         <div className="row wrap">
-          {AVATARS.map((a) => (
+          {AVATAR_COLORS.map((c) => (
             <button
-              key={a}
-              className="avatar"
-              style={{ borderColor: emoji === a ? 'var(--volt)' : undefined, cursor: 'pointer', background: emoji === a ? 'rgba(200,246,60,0.12)' : undefined }}
-              onClick={() => setEmoji(a)}
-            >
-              {a}
-            </button>
+              key={c}
+              className="swatch"
+              style={{ background: c, outline: avatarColor === c ? '3px solid var(--chalk)' : '3px solid transparent' }}
+              onClick={() => setAvatarColor(c)}
+              aria-label={c}
+            />
           ))}
         </div>
       </div>
@@ -155,7 +166,7 @@ function PlayerProfile({ player, onEdit, onClose }: { player: Player; onEdit: ()
   return (
     <div>
       <div className="row" style={{ marginBottom: 16 }}>
-        <span className="avatar lg">{player.emoji}</span>
+        <PlayerAvatar player={player} size="lg" />
         <div className="grow">
           <h3 style={{ marginBottom: 0 }}>{player.nickname}</h3>
           <div className="tiny muted">{player.name}</div>
@@ -216,8 +227,8 @@ function TeamsTab() {
   const createTeam = () => {
     addTeam({
       name: t('teams.defaultName', { n: teams.length + 1 }),
-      color: TEAM_COLORS[teams.length % TEAM_COLORS.length],
-      emoji: TEAM_EMOJIS[teams.length % TEAM_EMOJIS.length],
+      color: CREST_COLORS[teams.length % CREST_COLORS.length],
+      crest: { ...DEFAULT_CREST, symbol: CREST_SYMBOLS[teams.length % CREST_SYMBOLS.length].id },
       motto: t('teams.defaultMotto'),
     })
   }
@@ -254,10 +265,11 @@ function TeamForm({ team, onDone }: { team: Team; onDone: () => void }) {
   const { updateTeam } = useStore()
   const [name, setName] = useState(team.name)
   const [motto, setMotto] = useState(team.motto)
-  const [emoji, setEmoji] = useState(team.emoji)
   const [color, setColor] = useState(team.color)
+  const [crest, setCrest] = useState<TeamCrest>(teamCrest(team))
 
-  const preview: Team = { ...team, name, motto, emoji, color }
+  const setCrestField = <K extends keyof TeamCrest>(k: K, v: TeamCrest[K]) => setCrest((c) => ({ ...c, [k]: v }))
+  const preview: Team = { ...team, name, motto, color, crest }
 
   return (
     <div>
@@ -272,45 +284,118 @@ function TeamForm({ team, onDone }: { team: Team; onDone: () => void }) {
         <label>{t('form.battleCry')}</label>
         <input className="input" value={motto} onChange={(e) => setMotto(e.target.value)} placeholder={t('form.battleCryHint')} />
       </div>
+
       <div className="field">
-        <label>{t('form.crest')}</label>
-        <div className="row wrap">
-          {TEAM_EMOJIS.map((e) => (
+        <label>{t('form.symbol')}</label>
+        <div className="crest-symbol-grid">
+          {CREST_SYMBOLS.map((s) => (
             <button
-              key={e}
-              className="avatar"
-              style={{ cursor: 'pointer', borderColor: emoji === e ? 'var(--volt)' : undefined }}
-              onClick={() => setEmoji(e)}
-            >
-              {e}
-            </button>
+              key={s.id}
+              type="button"
+              className={`crest-symbol ${crest.symbol === s.id ? 'on' : ''}`}
+              onClick={() => setCrestField('symbol', s.id)}
+              aria-label={s.id}
+              dangerouslySetInnerHTML={{
+                __html: `<svg viewBox="0 0 24 24" width="24" height="24">${s.markup.replaceAll('INK', 'currentColor')}</svg>`,
+              }}
+            />
           ))}
         </div>
       </div>
+
+      <div className="field">
+        <label>{t('form.symbolColour')}</label>
+        <div className="row wrap">
+          {CREST_INK.map((c) => {
+            const on = (crest.symbolColor || 'auto') === c
+            return (
+              <button
+                key={c}
+                type="button"
+                className={`swatch ${c === 'auto' ? 'auto' : ''}`}
+                style={c === 'auto'
+                  ? { outline: on ? '3px solid var(--chalk)' : '3px solid transparent' }
+                  : { background: c, outline: on ? '3px solid var(--chalk)' : '3px solid transparent' }}
+                onClick={() => setCrestField('symbolColor', c)}
+                aria-label={c === 'auto' ? 'auto' : c}
+              >
+                {c === 'auto' ? 'A' : ''}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="field">
+        <label>{t('form.shape')}</label>
+        <div className="row wrap">
+          {CREST_SHAPES.map((sh) => (
+            <button
+              key={sh}
+              type="button"
+              className={`crest-pattern ${crest.shape === sh ? 'on' : ''}`}
+              style={{ clipPath: shapeClipCss(sh) }}
+              onClick={() => setCrestField('shape', sh as CrestShape)}
+              aria-label={sh}
+              dangerouslySetInnerHTML={{ __html: buildCrestSvg({ ...crest, shape: sh }, color) }}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="field">
+        <label>{t('form.pattern')}</label>
+        <div className="row wrap">
+          {CREST_PATTERNS.map((p) => (
+            <button
+              key={p}
+              type="button"
+              className={`crest-pattern ${crest.pattern === p ? 'on' : ''}`}
+              style={{ clipPath: shapeClipCss(crest.shape) }}
+              onClick={() => setCrestField('pattern', p as CrestPattern)}
+              aria-label={p}
+              dangerouslySetInnerHTML={{ __html: buildCrestSvg({ ...crest, pattern: p }, color) }}
+            />
+          ))}
+        </div>
+      </div>
+
       <div className="field">
         <label>{t('form.colours')}</label>
         <div className="row wrap">
-          {TEAM_COLORS.map((c) => (
+          {CREST_COLORS.map((c) => (
             <button
               key={c}
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 10,
-                background: c,
-                border: color === c ? '3px solid var(--chalk)' : '3px solid transparent',
-                cursor: 'pointer',
-              }}
+              type="button"
+              className="swatch"
+              style={{ background: c, outline: color === c ? '3px solid var(--chalk)' : '3px solid transparent' }}
               onClick={() => setColor(c)}
               aria-label={c}
             />
           ))}
         </div>
       </div>
+
+      <div className="field">
+        <label>{t('form.secondaryColour')}</label>
+        <div className="row wrap">
+          {CREST_SECONDARY.map((c) => (
+            <button
+              key={c}
+              type="button"
+              className="swatch"
+              style={{ background: c, outline: crest.secondary === c ? '3px solid var(--chalk)' : '3px solid transparent' }}
+              onClick={() => setCrestField('secondary', c)}
+              aria-label={c}
+            />
+          ))}
+        </div>
+      </div>
+
       <button
         className="btn btn-volt btn-block"
         onClick={() => {
-          updateTeam(team.id, { name: name.trim() || team.name, motto, emoji, color })
+          updateTeam(team.id, { name: name.trim() || team.name, motto, color, crest })
           onDone()
         }}
       >
@@ -427,7 +512,7 @@ function SeasonTab() {
                     <div className="rank-main">
                       <div className="rank-name">{s.name}</div>
                       <div className="rank-sub">
-                        {champ ? t('season.champions', { team: `${champ.emoji} ${champ.name}` }) : t('season.noMatchesPlayed')} · {s.startedAt} → {s.endedAt}
+                        {champ ? t('season.champions', { team: champ.name }) : t('season.noMatchesPlayed')} · {s.startedAt} → {s.endedAt}
                       </div>
                     </div>
                     <span className="tiny muted">{t('season.relive')}</span>
@@ -509,7 +594,7 @@ function Ceremony({ seasonId, onClose }: { seasonId: string; onClose: () => void
           if (!p) return null
           return (
             <div className="award-row" key={label}>
-              <span className="avatar">{p.emoji}</span>
+              <PlayerAvatar player={p} />
               <div className="grow">
                 <div className="tiny muted" style={{ fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase' }}>{emoji} {label}</div>
                 <div className="rank-name">{p.nickname}</div>

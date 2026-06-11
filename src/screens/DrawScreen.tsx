@@ -4,7 +4,7 @@ import { useStore } from '../store'
 import { useT, plural } from '../i18n'
 import { balancedDraw, teamSkill } from '../lib/draw'
 import { formatDate } from '../lib/util'
-import { Confetti, EmptyState, Stars, Stepper, TeamShield } from '../components/ui'
+import { Confetti, EmptyState, PlayerAvatar, Stars, Stepper, TeamShield } from '../components/ui'
 import type { Screen } from '../types'
 
 export function DrawScreen({ go }: { go: (s: Screen) => void }) {
@@ -106,7 +106,7 @@ export function DrawScreen({ go }: { go: (s: Screen) => void }) {
                           show: { opacity: 1, x: 0, scale: 1, transition: { type: 'spring', stiffness: 320, damping: 22 } },
                         }}
                       >
-                        <span className="avatar" style={{ width: 30, height: 30, fontSize: 15 }}>{p.emoji}</span>
+                        <PlayerAvatar player={p} size="sm" />
                         <span className="nm">{p.nickname}</span>
                         <Stars value={p.skill} />
                         {otherTeams[0] && (
@@ -152,7 +152,7 @@ export function DrawScreen({ go }: { go: (s: Screen) => void }) {
                   className={`pchip ${on ? 'on' : ''}`}
                   onClick={() => setSelected(on ? selected.filter((x) => x !== p.id) : [...selected, p.id])}
                 >
-                  <span className="pemoji">{p.emoji}</span>
+                  <PlayerAvatar player={p} size="sm" />
                   <span>
                     <span className="pname">{p.nickname}</span>
                     <br />
