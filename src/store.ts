@@ -50,6 +50,7 @@ type State = LeagueData & {
   addPlayer: (p: Omit<Player, 'id' | 'createdAt'>) => void
   updatePlayer: (id: string, patch: Partial<Player>) => void
   deletePlayer: (id: string) => void
+  importPlayers: (drafts: Omit<Player, 'id' | 'createdAt'>[], replace: boolean) => void
 
   addTeam: (t: Omit<Team, 'id'>) => void
   updateTeam: (id: string, patch: Partial<Team>) => void
@@ -110,6 +111,13 @@ export const useStore = create<State>()(
               }
             : null,
         })),
+
+      importPlayers: (drafts, replace) =>
+        set((s) => {
+          const created: Player[] = drafts.map((d) => ({ ...d, id: uid(), createdAt: new Date().toISOString() }))
+          // Replacing the squad invalidates the current draw (it points at old ids).
+          return { players: replace ? created : [...s.players, ...created], draw: replace ? null : s.draw }
+        }),
 
       addTeam: (t) => set((s) => ({ teams: [...s.teams, { ...t, id: uid() }] })),
       updateTeam: (id, patch) =>

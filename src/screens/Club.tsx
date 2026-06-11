@@ -3,6 +3,7 @@ import { useStore, type LeagueData } from '../store'
 import { useT } from '../i18n'
 import { computePlayerStats, computeStandings, leaders, playerBadges } from '../lib/stats'
 import { AVATAR_COLORS, todayISO } from '../lib/util'
+import { parsePlayersCsv, playersCsvTemplate } from '../lib/csv'
 import { buildCrestSvg, CREST_COLORS, CREST_INK, CREST_PATTERNS, CREST_SECONDARY, CREST_SHAPES, CREST_SYMBOLS, DEFAULT_CREST, shapeClipCss, teamCrest } from '../lib/crest'
 import { Confetti, EmptyState, PlayerAvatar, Sheet, Stars, TeamShield } from '../components/ui'
 import type { CrestPattern, CrestShape, Player, Team, TeamCrest } from '../types'
@@ -32,14 +33,46 @@ export function Club() {
 
 function PlayersTab() {
   const t = useT()
-  const { players, matches, activeSeasonId } = useStore()
+  const { players, matches, activeSeasonId, importPlayers } = useStore()
   const [editing, setEditing] = useState<Player | 'new' | null>(null)
   const [profile, setProfile] = useState<Player | null>(null)
+  const csvRef = useRef<HTMLInputElement>(null)
   const pstats = computePlayerStats(matches, players, activeSeasonId)
+
+  const downloadTemplate = () => {
+    const blob = new Blob([playersCsvTemplate()], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'pelada-fc-players.csv'
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const onCsvFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    const { players: drafts, skipped } = parsePlayersCsv(await file.text())
+    if (drafts.length === 0) {
+      window.alert(t('players.csvEmpty'))
+      return
+    }
+    const note = skipped > 0 ? ' ' + t('players.csvSkipped', { n: skipped }) : ''
+    if (window.confirm(t('players.csvConfirm', { n: drafts.length }) + note)) {
+      importPlayers(drafts, true) // replace — matches the chosen behaviour
+    }
+  }
 
   return (
     <>
       <button className="btn btn-volt btn-block" onClick={() => setEditing('new')}>{t('players.signNew')}</button>
+      <div className="spacer-sm" />
+      <div className="row" style={{ gap: 8 }}>
+        <button className="btn btn-ghost btn-sm grow" onClick={() => csvRef.current?.click()}>{t('players.importCsv')}</button>
+        <button className="btn btn-ghost btn-sm grow" onClick={downloadTemplate}>{t('players.csvTemplate')}</button>
+        <input ref={csvRef} type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={onCsvFile} />
+      </div>
       <div className="spacer" />
       {players.length === 0 ? (
         <EmptyState emoji="👥" title={t('players.emptyTitle')} text={t('players.emptyText')} />

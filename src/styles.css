@@ -935,6 +935,7 @@ table.league tr.leader td { background: rgba(200, 246, 60, 0.04); }
 .muted { color: var(--muted); }
 .tiny { font-size: 11px; }
 .spacer { height: 14px; }
+.spacer-sm { height: 8px; }
 
 .tabs {
   display: flex;
