@@ -165,3 +165,72 @@ export function leaders(stats: PlayerStats[], key: 'goals' | 'assists' | 'mvps')
     .filter((s) => s[key] > 0)
     .sort((a, b) => b[key] - a[key] || b.apps - a.apps)
 }
+
+/* ─────────────────────── form-based player ratings ───────────────────────
+   Stars are EARNED, not hand-set. After a match an admin can score each player
+   1–10 (Match.ratings); their star rating then drifts toward recent form via an
+   exponential moving average. Seeded by the player's starting `skill` (1–5 → ×2
+   on the 1–10 scale) so a brand-new player still has sensible stars day one. */
+
+const RATING_ALPHA = 0.35 // responsiveness — how hard one match pulls the rating
+const RATING_MAX_STEP = 1.0 // guardrail — no single match moves stars more than ±0.5★
+const clampN = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n))
+
+/** A player's seed rating on the 1–10 scale, used before any match notes exist. */
+export const seedRating = (p: Player): number => clampN(p.skill * 2, 1, 10)
+
+export type RatingInfo = {
+  playerId: string
+  rating: number // live, 1..10
+  stars: number // 0..5 in 0.5 steps (rating / 2)
+  rated: number // how many matches carried a note
+  notes: number[] // chronological, most recent last
+  trend: 'up' | 'down' | 'flat' // which way the last rated match moved them
+  streak: 'hot' | 'cold' | null // 3+ straight strong (≥8) / weak (≤4) notes
+}
+
+export function computePlayerRatings(matches: Match[], players: Player[]): Map<string, RatingInfo> {
+  // All-time and chronological: a player's ability carries across seasons.
+  const ordered = matches.filter((m) => m.finished).sort((a, b) => a.date.localeCompare(b.date))
+  const out = new Map<string, RatingInfo>()
+  for (const p of players) {
+    let rating = seedRating(p)
+    let prev = rating
+    const notes: number[] = []
+    for (const m of ordered) {
+      const raw = m.ratings?.[p.id]
+      if (typeof raw !== 'number') continue
+      const note = clampN(raw, 1, 10)
+      prev = rating
+      rating += clampN(RATING_ALPHA * (note - rating), -RATING_MAX_STEP, RATING_MAX_STEP)
+      notes.push(note)
+    }
+    const recent = notes.slice(-3)
+    const streak: RatingInfo['streak'] =
+      recent.length >= 3 && recent.every((n) => n >= 8) ? 'hot'
+      : recent.length >= 3 && recent.every((n) => n <= 4) ? 'cold'
+      : null
+    const trend: RatingInfo['trend'] =
+      notes.length === 0 ? 'flat' : rating > prev + 0.05 ? 'up' : rating < prev - 0.05 ? 'down' : 'flat'
+    out.set(p.id, { playerId: p.id, rating, stars: Math.round(rating) / 2, rated: notes.length, notes, trend, streak })
+  }
+  return out
+}
+
+/** playerId → live rating (1..10), for the balanced draw and team-strength pills. */
+export function strengthMap(matches: Match[], players: Player[]): Map<string, number> {
+  const infos = computePlayerRatings(matches, players)
+  return new Map(players.map((p) => [p.id, infos.get(p.id)?.rating ?? seedRating(p)]))
+}
+
+/** Biggest climber this season — needs at least 2 notes to have a trajectory. */
+export function mostImproved(ratings: Map<string, RatingInfo>, players: Player[]): { player: Player; gain: number } | null {
+  let best: { player: Player; gain: number } | null = null
+  for (const p of players) {
+    const info = ratings.get(p.id)
+    if (!info || info.rated < 2) continue
+    const gain = info.rating - seedRating(p)
+    if (gain > 0.4 && (!best || gain > best.gain)) best = { player: p, gain }
+  }
+  return best
+}

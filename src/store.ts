@@ -19,6 +19,11 @@ function normalizePlayer(p: Partial<Player> & { id?: string; nickname?: string; 
   }
 }
 
+/** Older matches predate per-player notes; default them to an empty map. */
+function normalizeMatch(m: Partial<Match> & { id?: string }): Match {
+  return { ...(m as Match), ratings: m.ratings ?? {} }
+}
+
 function normalizeTeam(t: Partial<Team> & { id?: string; emoji?: string }): Team {
   return {
     id: t.id ?? uid(),
@@ -72,6 +77,7 @@ type State = LeagueData & {
     lineups: Record<string, string[]>
     mvpId: string | null
   }) => string
+  setMatchRatings: (matchId: string, ratings: Record<string, number>) => void
   deleteMatch: (matchId: string) => void
 
   loadDemo: () => void
@@ -169,6 +175,7 @@ export const useStore = create<State>()(
           teamBId,
           goals: goals.map((g) => ({ ...g, id: uid() })),
           lineups,
+          ratings: {},
           mvpId,
           finished: true,
         }
@@ -182,6 +189,8 @@ export const useStore = create<State>()(
         })
         return id
       },
+      setMatchRatings: (matchId, ratings) =>
+        set((s) => ({ matches: s.matches.map((m) => (m.id === matchId ? { ...m, ratings } : m)) })),
       deleteMatch: (matchId) => set((s) => ({ matches: s.matches.filter((m) => m.id !== matchId) })),
 
       loadDemo: () => set(buildDemo()),
@@ -192,22 +201,23 @@ export const useStore = create<State>()(
           players: (data.players ?? []).map(normalizePlayer),
           teams: (data.teams ?? []).map(normalizeTeam),
           seasons: data.seasons ?? [],
-          matches: data.matches ?? [],
+          matches: (data.matches ?? []).map(normalizeMatch),
           draw: data.draw ?? null,
           activeSeasonId: data.activeSeasonId ?? null,
         }),
     }),
     {
       name: 'pelada-fc',
-      version: 2,
-      // v1 → v2: players carried an emoji, teams carried an emoji. Migrate to
-      // monogram colours + structured crests.
+      version: 3,
+      // v1 → v2: emoji players/teams → monogram colours + structured crests.
+      // v2 → v3: matches gain a per-player `ratings` map (form-based stars).
       migrate: (persisted) => {
         const s = persisted as Partial<LeagueData>
         return {
           ...s,
           players: (s.players ?? []).map(normalizePlayer),
           teams: (s.teams ?? []).map(normalizeTeam),
+          matches: (s.matches ?? []).map(normalizeMatch),
         }
       },
     },
@@ -275,6 +285,7 @@ function buildDemo() {
       teamBId: tB.id,
       goals: [goal(tA.id, p(0), p(6)), goal(tA.id, p(6)), goal(tB.id, p(9), p(1)), goal(tB.id, p(1)), goal(tB.id, p(9))],
       lineups,
+      ratings: {},
       mvpId: p(9).id,
       finished: true,
     },
@@ -287,6 +298,7 @@ function buildDemo() {
       teamBId: tB.id,
       goals: [goal(tA.id, p(0), p(2)), goal(tA.id, p(4)), goal(tA.id, p(0)), goal(tB.id, p(3), p(9))],
       lineups,
+      ratings: {},
       mvpId: p(0).id,
       finished: true,
     },
@@ -299,6 +311,7 @@ function buildDemo() {
       teamBId: tB.id,
       goals: [goal(tA.id, p(6), p(0)), goal(tB.id, p(1), p(5)), goal(tB.id, p(9))],
       lineups,
+      ratings: {},
       mvpId: p(1).id,
       finished: true,
     },
@@ -311,10 +324,14 @@ function buildDemo() {
       teamBId: tB.id,
       goals: [goal(tA.id, p(0), p(6)), goal(tA.id, p(2)), goal(tB.id, p(9), p(1))],
       lineups,
+      ratings: {},
       mvpId: p(0).id,
       finished: true,
     },
   ]
+
+  // Hand each demo match a believable set of 1–10 notes so star trends are visible.
+  for (const m of matches) m.ratings = demoRatings(m)
 
   const draw: Draw = {
     createdAt: '2026-05-14T20:00:00.000Z',
@@ -324,4 +341,25 @@ function buildDemo() {
   }
 
   return { players, teams, seasons: [season], matches, draw, activeSeasonId: season.id }
+}
+
+/** Derive plausible per-player notes for a demo match from its own events. */
+function demoRatings(m: Match): Record<string, number> {
+  const teamGoals: Record<string, number> = {}
+  for (const g of m.goals) teamGoals[g.teamId] = (teamGoals[g.teamId] ?? 0) + 1
+  const ga = teamGoals[m.teamAId] ?? 0
+  const gb = teamGoals[m.teamBId] ?? 0
+  const out: Record<string, number> = {}
+  for (const [teamId, ids] of Object.entries(m.lineups)) {
+    const mine = teamGoals[teamId] ?? 0
+    const opp = teamId === m.teamAId ? gb : ga
+    const result = mine > opp ? 1.5 : mine < opp ? -1 : 0
+    for (const pid of ids) {
+      const goals = m.goals.filter((g) => g.scorerId === pid).length
+      const assists = m.goals.filter((g) => g.assistId === pid).length
+      const note = 5 + result + goals + assists * 0.7 + (m.mvpId === pid ? 1.5 : 0)
+      out[pid] = Math.max(1, Math.min(10, Math.round(note)))
+    }
+  }
+  return out
 }

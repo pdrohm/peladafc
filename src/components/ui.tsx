@@ -71,6 +71,29 @@ export function Stars({ value, onChange }: { value: number; onChange?: (v: numbe
   )
 }
 
+/** Read-only star meter that supports half-stars — `value` is 0..5 in 0.5 steps. */
+export function RatingStars({ value, size }: { value: number; size?: 'sm' }) {
+  return (
+    <span className={`stars meter ${size ?? ''}`} aria-label={`${value} / 5`}>
+      {[0, 1, 2, 3, 4].map((i) => {
+        const fill = Math.max(0, Math.min(1, value - i)) // 0..1 of this star
+        return (
+          <span key={i} className="star-slot">
+            <span className="s-bg">⭐</span>
+            <span className="s-fg" style={{ width: `${fill * 100}%` }}>⭐</span>
+          </span>
+        )
+      })}
+    </span>
+  )
+}
+
+/** Small form-direction arrow. Renders nothing when flat. */
+export function TrendArrow({ trend }: { trend: 'up' | 'down' | 'flat' }) {
+  if (trend === 'flat') return null
+  return <span className={`trend ${trend}`} aria-label={trend}>{trend === 'up' ? '▲' : '▼'}</span>
+}
+
 export function Stepper({ value, onChange, min = 1, max = 12 }: {
   value: number
   onChange: (v: number) => void

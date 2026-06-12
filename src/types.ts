@@ -3,7 +3,7 @@ export type Player = {
   name: string
   nickname: string
   avatarColor: string // hex — drives the initials monogram
-  skill: number // 1..5
+  skill: number // 1..5 — STARTING rating only; live stars are earned from match notes
   createdAt: string
 }
 
@@ -43,6 +43,7 @@ export type Match = {
   teamBId: string
   goals: GoalEvent[]
   lineups: Record<string, string[]> // teamId -> playerIds
+  ratings: Record<string, number> // playerId -> performance note 1..10 (sparse; admin-entered, optional)
   mvpId: string | null
   finished: boolean
 }

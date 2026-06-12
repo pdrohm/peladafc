@@ -1,11 +1,11 @@
 import { useRef, useState, type ChangeEvent } from 'react'
 import { useStore, type LeagueData } from '../store'
 import { useT } from '../i18n'
-import { computePlayerStats, computeStandings, leaders, playerBadges } from '../lib/stats'
+import { computePlayerRatings, computePlayerStats, computeStandings, leaders, playerBadges } from '../lib/stats'
 import { AVATAR_COLORS, todayISO } from '../lib/util'
 import { parsePlayersCsv, playersCsvTemplate } from '../lib/csv'
 import { buildCrestSvg, CREST_COLORS, CREST_INK, CREST_PATTERNS, CREST_SECONDARY, CREST_SHAPES, CREST_SYMBOLS, DEFAULT_CREST, shapeClipCss, teamCrest } from '../lib/crest'
-import { Confetti, EmptyState, PlayerAvatar, Sheet, Stars, TeamShield } from '../components/ui'
+import { Confetti, EmptyState, PlayerAvatar, RatingStars, Sheet, Stars, TeamShield, TrendArrow } from '../components/ui'
 import type { CrestPattern, CrestShape, Player, Team, TeamCrest } from '../types'
 
 type Tab = 'players' | 'teams' | 'season'
@@ -38,6 +38,7 @@ function PlayersTab() {
   const [profile, setProfile] = useState<Player | null>(null)
   const csvRef = useRef<HTMLInputElement>(null)
   const pstats = computePlayerStats(matches, players, activeSeasonId)
+  const ratings = computePlayerRatings(matches, players)
 
   const downloadTemplate = () => {
     const blob = new Blob([playersCsvTemplate()], { type: 'text/csv;charset=utf-8' })
@@ -82,6 +83,7 @@ function PlayersTab() {
             .sort((a, b) => a.nickname.localeCompare(b.nickname))
             .map((p) => {
               const s = pstats.find((x) => x.playerId === p.id)
+              const info = ratings.get(p.id)
               return (
                 <button
                   key={p.id}
@@ -94,7 +96,10 @@ function PlayersTab() {
                     <div className="rank-name">{p.nickname} <span className="tiny muted">{p.name}</span></div>
                     <div className="rank-sub">⚽ {s?.goals ?? 0} · 🤝 {s?.assists ?? 0} · 👑 {s?.mvps ?? 0}</div>
                   </div>
-                  <Stars value={p.skill} />
+                  <span className="row" style={{ gap: 4, alignItems: 'center' }}>
+                    <RatingStars value={info?.stars ?? p.skill} size="sm" />
+                    {info && <TrendArrow trend={info.trend} />}
+                  </span>
                 </button>
               )
             })}
@@ -195,6 +200,7 @@ function PlayerProfile({ player, onEdit, onClose }: { player: Player; onEdit: ()
   const pstats = computePlayerStats(matches, players, activeSeasonId)
   const s = pstats.find((x) => x.playerId === player.id)
   const badges = s ? playerBadges(s, pstats) : []
+  const info = computePlayerRatings(matches, players).get(player.id)
 
   return (
     <div>
@@ -204,11 +210,17 @@ function PlayerProfile({ player, onEdit, onClose }: { player: Player; onEdit: ()
           <h3 style={{ marginBottom: 0 }}>{player.nickname}</h3>
           <div className="tiny muted">{player.name}</div>
         </div>
-        <Stars value={player.skill} />
+        <div style={{ textAlign: 'right' }}>
+          <RatingStars value={info?.stars ?? player.skill} />
+          <div className="tiny muted" style={{ marginTop: 3 }}>
+            {(info?.rating ?? player.skill * 2).toFixed(1)}/10 {info && <TrendArrow trend={info.trend} />}
+          </div>
+        </div>
       </div>
 
-      {badges.length > 0 && (
+      {(badges.length > 0 || info?.streak) && (
         <div className="row wrap" style={{ marginBottom: 16 }}>
+          {info?.streak && <span className={`pill ${info.streak}`}>{t(`streak.${info.streak}`)}</span>}
           {badges.map((b) => (
             <span key={b.id} className="pill gold" title={t(`badge.${b.id}.hint`)}>{b.emoji} {t(`badge.${b.id}`)}</span>
           ))}
@@ -230,6 +242,23 @@ function PlayerProfile({ player, onEdit, onClose }: { player: Player; onEdit: ()
           </div>
         ))}
       </div>
+
+      <div className="section-title">{t('profile.form')}</div>
+      {info && info.rated > 0 ? (
+        <div className="row wrap" style={{ gap: 6 }}>
+          {info.notes.slice(-10).map((n, i) => (
+            <span
+              key={i}
+              className="pill"
+              style={{ minWidth: 28, justifyContent: 'center', fontWeight: 800, color: n >= 8 ? 'var(--gold)' : n <= 4 ? 'var(--red)' : 'var(--chalk)' }}
+            >
+              {n}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="tiny muted" style={{ marginTop: 0 }}>{t('profile.noRatings')}</p>
+      )}
 
       <div className="spacer" />
       <div className="row">

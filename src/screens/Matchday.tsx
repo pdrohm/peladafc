@@ -5,6 +5,7 @@ import { scoreOf } from '../lib/stats'
 import { shareMatchImage } from '../lib/share'
 import { todayISO, uid } from '../lib/util'
 import { Confetti, EmptyState, PlayerAvatar, Sheet, TeamShield } from '../components/ui'
+import { RateSquadSheet } from '../components/RateSquad'
 import type { GoalEvent, Match, Screen, Team } from '../types'
 
 export function Matchday({ go }: { go: (s: Screen) => void }) {
@@ -339,6 +340,7 @@ function GoalForm({ playerIds, onSave }: {
 function FullTime({ match, go, onDone }: { match: Match; go: (s: Screen) => void; onDone: () => void }) {
   const t = useT()
   const { teams, players } = useStore()
+  const [rating, setRating] = useState(false)
   const teamA = teams.find((tm) => tm.id === match.teamAId)
   const teamB = teams.find((tm) => tm.id === match.teamBId)
   const { a, b } = scoreOf(match)
@@ -376,11 +378,15 @@ function FullTime({ match, go, onDone }: { match: Match; go: (s: Screen) => void
         )}
       </div>
       <div className="spacer" />
+      <button className="btn btn-volt btn-block" onClick={() => setRating(true)}>{t('ft.rateSquad')}</button>
+      <div className="spacer" />
       <div className="row" style={{ justifyContent: 'center' }}>
         <button className="btn btn-ghost" onClick={() => shareMatchImage(match, teams, players)}>{t('ft.shareResult')}</button>
         <button className="btn btn-ghost" onClick={onDone}>{t('rec.another')}</button>
-        <button className="btn btn-volt" onClick={() => { onDone(); go('table') }}>{t('ft.seeTable')}</button>
+        <button className="btn btn-ghost" onClick={() => { onDone(); go('table') }}>{t('ft.seeTable')}</button>
       </div>
+
+      <RateSquadSheet match={match} open={rating} onClose={() => setRating(false)} />
     </div>
   )
 }

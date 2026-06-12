@@ -229,6 +229,20 @@ const en: Dict = {
   'ft.shareResult': '📤 Share result',
   'ft.newMatch': 'New match',
   'ft.seeTable': 'See the table',
+  'ft.rateSquad': '⭐ Rate the squad',
+
+  // player ratings (form-based stars)
+  'rate.title': 'Rate the squad',
+  'rate.sub': 'Score each player 1–10. Stars rise and fall with recent form — skip anyone, only the notes you give count.',
+  'rate.save': 'Save ratings',
+  'rate.saveN': 'Save {n} ratings',
+  'rate.dash': '—',
+  'dash.rate': 'Rate ›',
+  'profile.rating': 'Form rating',
+  'profile.form': 'Recent notes',
+  'profile.noRatings': 'No notes yet — score them after a match to start moving their stars.',
+  'streak.hot': '🔥 On fire',
+  'streak.cold': '🧊 Cold streak',
 
   // club
   'club.titleA': 'The',
@@ -250,7 +264,7 @@ const en: Dict = {
   'form.nickname': 'Nickname',
   'form.fullName': 'Full name',
   'form.spiritAnimal': 'Spirit animal',
-  'form.skillLevel': 'Skill level (keeps draws fair)',
+  'form.skillLevel': 'Starting rating (seeds their stars before match notes)',
   'form.saveChanges': 'Save changes',
   'form.signPlayer': '✍️ Sign player',
   'stat.goals': 'Goals',
@@ -497,6 +511,20 @@ const pt: Dict = {
   'ft.shareResult': '📤 Compartilhar resultado',
   'ft.newMatch': 'Nova partida',
   'ft.seeTable': 'Ver a tabela',
+  'ft.rateSquad': '⭐ Avaliar o time',
+
+  // player ratings (form-based stars)
+  'rate.title': 'Avaliar o time',
+  'rate.sub': 'Dê uma nota de 1 a 10 para cada jogador. As estrelas sobem e descem conforme a fase — pode pular quem quiser, só as notas dadas contam.',
+  'rate.save': 'Salvar notas',
+  'rate.saveN': 'Salvar {n} notas',
+  'rate.dash': '—',
+  'dash.rate': 'Avaliar ›',
+  'profile.rating': 'Nota de fase',
+  'profile.form': 'Notas recentes',
+  'profile.noRatings': 'Sem notas ainda — avalie após uma partida para começar a mexer nas estrelas.',
+  'streak.hot': '🔥 De fase',
+  'streak.cold': '🧊 Fase fria',
 
   // club
   'club.titleA': 'O',
@@ -518,7 +546,7 @@ const pt: Dict = {
   'form.nickname': 'Apelido',
   'form.fullName': 'Nome completo',
   'form.spiritAnimal': 'Animal-símbolo',
-  'form.skillLevel': 'Nível (mantém os sorteios justos)',
+  'form.skillLevel': 'Nota inicial (semente das estrelas antes das avaliações)',
   'form.saveChanges': 'Salvar alterações',
   'form.signPlayer': '✍️ Contratar',
   'stat.goals': 'Gols',

@@ -1,14 +1,17 @@
+import { useState } from 'react'
 import { useStore } from '../store'
 import { useT, plural } from '../i18n'
-import { computePlayerStats, computeStandings, leaders, scoreOf, seasonMatches } from '../lib/stats'
+import { computePlayerStats, computeStandings, leaders, scoreOf, seasonMatches, strengthMap } from '../lib/stats'
 import { formatDate } from '../lib/util'
 import { teamSkill } from '../lib/draw'
 import { EmptyState, FormDots, PlayerAvatar, TeamShield } from '../components/ui'
-import type { Screen } from '../types'
+import { RateSquadSheet } from '../components/RateSquad'
+import type { Match, Screen } from '../types'
 
 export function Dashboard({ go }: { go: (s: Screen) => void }) {
   const t = useT()
   const { players, teams, matches, draw, activeSeasonId, loadDemo } = useStore()
+  const [rateMatch, setRateMatch] = useState<Match | null>(null)
 
   const isEmpty = players.length === 0 && teams.length === 0
   if (isEmpty) {
@@ -36,6 +39,7 @@ export function Dashboard({ go }: { go: (s: Screen) => void }) {
 
   const standings = computeStandings(matches, teams, activeSeasonId)
   const pstats = computePlayerStats(matches, players, activeSeasonId)
+  const strength = strengthMap(matches, players)
   const played = seasonMatches(matches, activeSeasonId)
   const recent = [...played].reverse().slice(0, 3)
   const topScorers = leaders(pstats, 'goals')
@@ -84,13 +88,13 @@ export function Dashboard({ go }: { go: (s: Screen) => void }) {
             <div className="team-col">
               <TeamShield team={drawTeams[0]!} size="lg" />
               <span className="tname">{drawTeams[0]!.name}</span>
-              <span className="pill">{teamSkill(draw.assignments[drawTeams[0]!.id], players)} {t('dash.skill')}</span>
+              <span className="pill">{teamSkill(draw.assignments[drawTeams[0]!.id], strength)} {t('dash.skill')}</span>
             </div>
             <span className="vs">{t('dash.vs')}</span>
             <div className="team-col">
               <TeamShield team={drawTeams[1]!} size="lg" />
               <span className="tname">{drawTeams[1]!.name}</span>
-              <span className="pill">{teamSkill(draw.assignments[drawTeams[1]!.id], players)} {t('dash.skill')}</span>
+              <span className="pill">{teamSkill(draw.assignments[drawTeams[1]!.id], strength)} {t('dash.skill')}</span>
             </div>
           </div>
           <div className="spacer" />
@@ -183,16 +187,24 @@ export function Dashboard({ go }: { go: (s: Screen) => void }) {
                   const ta = teamOf(m.teamAId)
                   const tb = teamOf(m.teamBId)
                   if (!ta || !tb) return null
+                  const rated = Object.keys(m.ratings ?? {}).length
                   return (
-                    <div className="card flat match-card row" key={m.id}>
+                    <button
+                      className="card flat match-card row"
+                      key={m.id}
+                      onClick={() => setRateMatch(m)}
+                      style={{ width: '100%', textAlign: 'left', color: 'inherit', cursor: 'pointer' }}
+                    >
                       <TeamShield team={ta} size="sm" />
                       <span className="match-score grow">{a} – {b}</span>
                       <TeamShield team={tb} size="sm" />
                       <div style={{ textAlign: 'right' }}>
                         <div className="tiny muted">{formatDate(m.date)}</div>
-                        <div className="tiny muted">📍 {m.location}</div>
+                        {rated > 0
+                          ? <div className="tiny" style={{ color: 'var(--volt)', fontWeight: 700 }}>⭐ {rated}</div>
+                          : <div className="tiny muted">{t('dash.rate')}</div>}
                       </div>
-                    </div>
+                    </button>
                   )
                 })}
               </div>
@@ -200,6 +212,8 @@ export function Dashboard({ go }: { go: (s: Screen) => void }) {
           )}
         </div>
       </div>
+
+      <RateSquadSheet match={rateMatch} open={!!rateMatch} onClose={() => setRateMatch(null)} />
     </div>
   )
 }

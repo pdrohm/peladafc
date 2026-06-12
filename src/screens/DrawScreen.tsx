@@ -3,16 +3,19 @@ import { motion } from 'motion/react'
 import { useStore } from '../store'
 import { useT, plural } from '../i18n'
 import { balancedDraw, teamSkill } from '../lib/draw'
+import { computePlayerRatings, strengthMap } from '../lib/stats'
 import { formatDate } from '../lib/util'
-import { Confetti, EmptyState, PlayerAvatar, Stars, Stepper, TeamShield } from '../components/ui'
+import { Confetti, EmptyState, PlayerAvatar, RatingStars, Stepper, TeamShield } from '../components/ui'
 import type { Screen } from '../types'
 
 export function DrawScreen({ go }: { go: (s: Screen) => void }) {
   const t = useT()
-  const { players, teams, draw, setDraw, movePlayerInDraw, settings, setLockMatchdays, setDrawLock } = useStore()
+  const { players, teams, matches, draw, setDraw, movePlayerInDraw, settings, setLockMatchdays, setDrawLock } = useStore()
   const [picking, setPicking] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
   const [celebrate, setCelebrate] = useState(false)
+  const ratings = computePlayerRatings(matches, players)
+  const strength = strengthMap(matches, players)
 
   if (players.length < 2 || teams.length < 2) {
     return (
@@ -30,7 +33,7 @@ export function DrawScreen({ go }: { go: (s: Screen) => void }) {
 
   const runDraw = (playerIds: string[]) => {
     const pool = players.filter((p) => playerIds.includes(p.id))
-    const assignments = balancedDraw(pool, teams.map((t) => t.id))
+    const assignments = balancedDraw(pool, teams.map((t) => t.id), strength)
     setDraw(assignments)
     setPicking(false)
     setCelebrate(true)
@@ -92,7 +95,7 @@ export function DrawScreen({ go }: { go: (s: Screen) => void }) {
                       <div className="rank-name" style={{ fontSize: 15 }}>{team.name}</div>
                       <div className="tiny muted">{team.motto}</div>
                     </div>
-                    <span className="pill volt">{teamSkill(ids, players)} ⚡</span>
+                    <span className="pill volt">{teamSkill(ids, strength)} ⚡</span>
                   </div>
                   {ids.map((pid) => {
                     const p = players.find((x) => x.id === pid)
@@ -108,7 +111,7 @@ export function DrawScreen({ go }: { go: (s: Screen) => void }) {
                       >
                         <PlayerAvatar player={p} size="sm" />
                         <span className="nm">{p.nickname}</span>
-                        <Stars value={p.skill} />
+                        <RatingStars value={ratings.get(pid)?.stars ?? p.skill} size="sm" />
                         {otherTeams[0] && (
                           <button
                             className="icon-btn"
@@ -156,7 +159,7 @@ export function DrawScreen({ go }: { go: (s: Screen) => void }) {
                   <span>
                     <span className="pname">{p.nickname}</span>
                     <br />
-                    <span className="pskill">{'⭐'.repeat(p.skill)}</span>
+                    <RatingStars value={ratings.get(p.id)?.stars ?? p.skill} size="sm" />
                   </span>
                 </button>
               )
