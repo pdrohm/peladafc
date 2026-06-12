@@ -6,6 +6,8 @@ import { AVATAR_COLORS, todayISO } from '../lib/util'
 import { parsePlayersCsv, playersCsvTemplate } from '../lib/csv'
 import { buildCrestSvg, CREST_COLORS, CREST_INK, CREST_PATTERNS, CREST_SECONDARY, CREST_SHAPES, CREST_SYMBOLS, DEFAULT_CREST, shapeClipCss, teamCrest } from '../lib/crest'
 import { Confetti, EmptyState, PlayerAvatar, RatingStars, Sheet, Stars, TeamShield, TrendArrow } from '../components/ui'
+import { useCloud } from '../lib/cloud'
+import { isSupabaseConfigured } from '../lib/supabase'
 import type { CrestPattern, CrestShape, Player, Team, TeamCrest } from '../types'
 
 type Tab = 'players' | 'teams' | 'season'
@@ -593,6 +595,8 @@ function SeasonTab() {
       </div>
       <p className="tiny muted">{t('season.backupNote')}</p>
 
+      <CloudSyncCard />
+
       <div className="section-title">{t('season.dangerZone')}</div>
       <div className="row">
         <button className="btn btn-ghost btn-sm" onClick={() => window.confirm(t('season.loadDemoConfirm')) && loadDemo()}>
@@ -607,6 +611,94 @@ function SeasonTab() {
       </div>
 
       {ceremonyId && <Ceremony seasonId={ceremonyId} onClose={() => setCeremonyId(null)} />}
+    </>
+  )
+}
+
+/* ── cloud sync ── */
+
+function CloudSyncCard() {
+  const t = useT()
+  const { leagueId, status, error, lastSyncedAt, createLeague, joinLeague, disconnect } = useCloud()
+  const [code, setCode] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  if (!isSupabaseConfigured) {
+    return (
+      <>
+        <div className="section-title">{t('cloud.title')}</div>
+        <div className="card flat">
+          <p className="tiny muted" style={{ margin: 0 }}>{t('cloud.notConfigured')}</p>
+        </div>
+      </>
+    )
+  }
+
+  const connected = !!leagueId && status !== 'off'
+
+  const onCreate = async () => {
+    setBusy(true)
+    await createLeague()
+    setBusy(false)
+  }
+  const onJoin = async () => {
+    if (!code.trim() || !window.confirm(t('cloud.joinWarn'))) return
+    setBusy(true)
+    const ok = await joinLeague(code)
+    setBusy(false)
+    if (ok) setCode('')
+  }
+  const copy = async () => {
+    if (!leagueId) return
+    try { await navigator.clipboard.writeText(leagueId) } catch { /* clipboard may be blocked */ }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  return (
+    <>
+      <div className="section-title">{t('cloud.title')}</div>
+      <div className="card card-pitch">
+        {connected ? (
+          <>
+            <span className={`pill ${status === 'live' ? 'volt' : ''}`}>
+              {status === 'connecting' ? t('cloud.connecting') : t('cloud.liveOn', { code: leagueId! })}
+            </span>
+            <div className="cloud-code">{leagueId}</div>
+            <p className="tiny muted" style={{ marginTop: 0 }}>{t('cloud.shareHint')}</p>
+            <div className="row">
+              <button className="btn btn-ghost btn-sm grow" onClick={copy}>{copied ? t('cloud.copied') : t('cloud.copy')}</button>
+              <button className="btn btn-ghost btn-sm" onClick={disconnect}>{t('cloud.disconnect')}</button>
+            </div>
+            {lastSyncedAt && status === 'live' && (
+              <p className="tiny muted" style={{ textAlign: 'center', margin: '8px 0 0' }}>
+                {t('cloud.lastSynced', { time: new Date(lastSyncedAt).toLocaleTimeString() })}
+              </p>
+            )}
+            {status === 'error' && error && <p className="tiny" style={{ color: 'var(--red)', marginBottom: 0 }}>{t('cloud.errorPrefix')} {error}</p>}
+          </>
+        ) : (
+          <>
+            <p className="tiny muted" style={{ marginTop: 0 }}>{t('cloud.off')}</p>
+            <button className="btn btn-volt btn-block" onClick={onCreate} disabled={busy}>{t('cloud.create')}</button>
+            <div className="spacer-sm" />
+            <label className="tiny muted">{t('cloud.joinLabel')}</label>
+            <div className="row" style={{ gap: 8 }}>
+              <input
+                className="input grow"
+                style={{ textTransform: 'uppercase', letterSpacing: '0.18em', fontWeight: 800 }}
+                placeholder={t('cloud.joinPlaceholder')}
+                value={code}
+                maxLength={8}
+                onChange={(e) => setCode(e.target.value)}
+              />
+              <button className="btn btn-ghost" onClick={onJoin} disabled={busy || !code.trim()}>{t('cloud.joinBtn')}</button>
+            </div>
+            {status === 'error' && error && <p className="tiny" style={{ color: 'var(--red)', margin: '8px 0 0' }}>{t('cloud.errorPrefix')} {error}</p>}
+          </>
+        )}
+      </div>
     </>
   )
 }

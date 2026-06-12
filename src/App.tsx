@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore } from './store'
+import { initCloud, useCloud } from './lib/cloud'
 import { useT, useLang } from './i18n'
 import { Dashboard } from './screens/Dashboard'
 import { Matchday } from './screens/Matchday'
@@ -36,10 +37,25 @@ function LangToggle() {
   )
 }
 
+function CloudChip() {
+  const t = useT()
+  const { leagueId, status } = useCloud()
+  if (!leagueId || status === 'off') return null
+  const live = status === 'live'
+  return (
+    <span className={`cloud-chip ${live ? 'live' : 'sync'}`} title={leagueId}>
+      {live ? t('cloud.chipLive') : t('cloud.chipSync')}
+    </span>
+  )
+}
+
 export default function App() {
   const [screen, setScreen] = useState<Screen>('home')
   const t = useT()
   const { seasons, activeSeasonId } = useStore()
+
+  // Reconnect to a saved cloud league once on startup (no-op if not configured).
+  useEffect(() => initCloud(), [])
   const season = seasons.find((s) => s.id === activeSeasonId && !s.endedAt)
 
   return (
@@ -47,6 +63,7 @@ export default function App() {
       <div className="topbar">
         <Wordmark />
         <div className="row" style={{ gap: 8 }}>
+          <CloudChip />
           {season && <span className="season-chip">{season.name}</span>}
           <LangToggle />
         </div>
